@@ -46,3 +46,7 @@ python -m PyInstaller --clean --noconfirm quickstats.spec
 ```
 
 The standalone application is written to `dist\QuickStats\QuickStats.exe`.
+
+## Installation
+
+For prerequisites, environment setup, configuration, and run/build commands, see the [installation guide](INSTALLATION.md).
