@@ -45,6 +45,18 @@ class _SampleWorker(QRunnable):
             self.signals.failed.emit(str(error))
 
 
+class _HardwareWorker(QRunnable):
+    def __init__(self) -> None:
+        super().__init__()
+        self.signals = _SampleSignals()
+
+    def run(self) -> None:
+        try:
+            self.signals.finished.emit(get_hardware_info())
+        except Exception as error:
+            self.signals.failed.emit(str(error))
+
+
 def format_bytes(value: int | float | None) -> str:
     if value is None:
         return UNAVAILABLE
@@ -186,23 +198,30 @@ class MainWindow(QMainWindow):
         self.update()
 
     def _load_hardware(self) -> None:
-        try:
-            info = get_hardware_info()
-            drives = ", ".join(
-                f"{drive.mountpoint} ({format_bytes(drive.total_bytes)})"
-                for drive in info.drives
-            ) or UNAVAILABLE
-            gpus = ", ".join(info.gpus) or UNAVAILABLE
-            self.hardware_card.set_details(
-                cpu=info.cpu_model,
-                memory=format_bytes(info.memory_total_bytes),
-                drives=drives,
-                operating_system=info.operating_system,
-                gpu=gpus,
-            )
-        except Exception:
-            logger.exception("Could not load hardware information")
-            self.hardware_card.set_details(*(UNAVAILABLE for _ in range(5)))
+        self._hardware_worker = _HardwareWorker()
+        self._hardware_worker.signals.finished.connect(self._hardware_finished)
+        self._hardware_worker.signals.failed.connect(self._hardware_failed)
+        QThreadPool.globalInstance().start(self._hardware_worker)
+
+    def _hardware_finished(self, info) -> None:
+        self._hardware_worker = None
+        drives = ", ".join(
+            f"{drive.mountpoint} ({format_bytes(drive.total_bytes)})"
+            for drive in info.drives
+        ) or UNAVAILABLE
+        gpus = ", ".join(info.gpus) or UNAVAILABLE
+        self.hardware_card.set_details(
+            cpu=info.cpu_model,
+            memory=format_bytes(info.memory_total_bytes),
+            drives=drives,
+            operating_system=info.operating_system,
+            gpu=gpus,
+        )
+
+    def _hardware_failed(self, message: str) -> None:
+        self._hardware_worker = None
+        logger.error("Could not load hardware information: %s", message)
+        self.hardware_card.set_details(*(UNAVAILABLE for _ in range(5)))
 
     def _set_refresh_interval(self, _index: int) -> None:
         seconds = self.interval.currentData()
