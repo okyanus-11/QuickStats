@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 
-from PySide6.QtCore import Qt, QTimer
+from PySide6.QtCore import Qt, QSettings, QTimer
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -21,7 +21,7 @@ from PySide6.QtWidgets import (
 
 from quickstats.hardware import UNAVAILABLE, get_hardware_info
 from quickstats.metrics import SystemMonitor, SystemSnapshot
-from quickstats.theme import STYLESHEET
+from quickstats import theme
 from quickstats.widgets import HardwareCard, HistoryChart, MetricCard
 
 logger = logging.getLogger(__name__)
@@ -63,6 +63,9 @@ class MainWindow(QMainWindow):
         self.resize(1060, 760)
         self.setMinimumSize(780, 620)
         self._monitor = SystemMonitor()
+        self._settings = QSettings("Okyanus11", "QuickStats")
+        self._theme_name = str(self._settings.value("appearance/theme", "graphite"))
+        self._accent_name = str(self._settings.value("appearance/accent", "blue"))
 
         root = QWidget()
         self.setCentralWidget(root)
@@ -83,7 +86,26 @@ class MainWindow(QMainWindow):
         self.uptime = QLabel("Uptime: —")
         self.uptime.setObjectName("uptime")
         header.addWidget(self.uptime)
-        header.addSpacing(18)
+        header.addSpacing(14)
+        appearance_label = QLabel("Theme")
+        appearance_label.setProperty("class", "muted")
+        header.addWidget(appearance_label)
+        self.theme_select = QComboBox()
+        for key, label in (("graphite", "Graphite"), ("midnight", "Midnight"), ("light", "Light")):
+            self.theme_select.addItem(label, key)
+        self.theme_select.setCurrentIndex(max(0, self.theme_select.findData(self._theme_name)))
+        self.theme_select.currentIndexChanged.connect(self._appearance_changed)
+        header.addWidget(self.theme_select)
+        self.accent_select = QComboBox()
+        for key, label in (
+            ("blue", "Blue"), ("violet", "Violet"), ("teal", "Teal"),
+            ("emerald", "Emerald"), ("amber", "Amber"), ("rose", "Rose"),
+        ):
+            self.accent_select.addItem(label, key)
+        self.accent_select.setCurrentIndex(max(0, self.accent_select.findData(self._accent_name)))
+        self.accent_select.currentIndexChanged.connect(self._appearance_changed)
+        header.addWidget(self.accent_select)
+        header.addSpacing(8)
         interval_label = QLabel("Refresh")
         interval_label.setProperty("class", "muted")
         header.addWidget(interval_label)
@@ -132,6 +154,16 @@ class MainWindow(QMainWindow):
         self._timer.timeout.connect(self.refresh_stats)
         self._timer.start(1000)
         self.refresh_stats()
+
+    def _appearance_changed(self, _index: int) -> None:
+        self._theme_name = str(self.theme_select.currentData() or "graphite")
+        self._accent_name = str(self.accent_select.currentData() or "blue")
+        self._settings.setValue("appearance/theme", self._theme_name)
+        self._settings.setValue("appearance/accent", self._accent_name)
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(theme.build_stylesheet(self._theme_name, self._accent_name))
+        self.update()
 
     def _load_hardware(self) -> None:
         try:
@@ -209,7 +241,7 @@ def main() -> int:
     )
     app = QApplication(sys.argv)
     app.setApplicationName("QuickStats")
-    app.setStyleSheet(STYLESHEET)
     window = MainWindow()
+    app.setStyleSheet(theme.build_stylesheet(window._theme_name, window._accent_name))
     window.show()
     return app.exec()
