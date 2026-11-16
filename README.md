@@ -11,9 +11,12 @@ that the system does not provide are shown as unavailable rather than guessed.
   rates, refreshed every second by default.
 - A CPU and memory history graph, system uptime, and selectable refresh
   intervals (1, 2, 5, or 10 seconds).
-- Hardware details for the processor, installed memory, mounted storage
-  volumes, Windows version, and display adapters when Windows reports them.
-- Dark Catppuccin Mocha-inspired interface with resizable metric cards.
+- Hardware details for processor, memory, mounted storage, Windows version,
+  and display adapters when Windows reports them.
+- Graphite, Midnight and Light themes with six selectable accent colours.
+- Theme and accent preferences persist between launches.
+- Metric collection and hardware inventory run in background workers so slow
+  OS queries do not freeze the interface.
 
 ## Requirements
 
@@ -31,37 +34,15 @@ python -m quickstats
 
 ## Tests
 
-Install the development dependencies and run the test suite:
-
 ```powershell
 python -m pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-The tests cover the system-monitoring data layer and do not require a running
-desktop session.
-
 ## Build a Windows executable
-
-On Windows, install the development dependencies, then run:
 
 ```powershell
 python -m PyInstaller --clean --noconfirm quickstats.spec
 ```
 
 The standalone application is written to `dist\QuickStats\QuickStats.exe`.
-Build on Windows for Windows; PyInstaller does not cross-compile executables.
-
-## Project layout
-
-```text
-quickstats/
-  hardware.py       Hardware details from OS APIs
-  main.py           Qt application window and refresh loop
-  metrics.py        Testable live system metrics
-  theme.py          Catppuccin-inspired Qt stylesheet
-  widgets.py        Metric cards and history graph
-tests/
-  test_hardware.py
-  test_metrics.py
-```
