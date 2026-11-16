@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import sys
 
-from PySide6.QtCore import Qt, QSettings, QTimer
+from PySide6.QtCore import QObject, QRunnable, Qt, QSettings, QThreadPool, QTimer, Signal
 from PySide6.QtWidgets import (
     QApplication,
     QComboBox,
@@ -25,6 +25,24 @@ from quickstats import theme
 from quickstats.widgets import HardwareCard, HistoryChart, MetricCard
 
 logger = logging.getLogger(__name__)
+
+
+class _SampleSignals(QObject):
+    finished = Signal(object)
+    failed = Signal(str)
+
+
+class _SampleWorker(QRunnable):
+    def __init__(self, monitor: SystemMonitor) -> None:
+        super().__init__()
+        self.monitor = monitor
+        self.signals = _SampleSignals()
+
+    def run(self) -> None:
+        try:
+            self.signals.finished.emit(self.monitor.sample())
+        except Exception as error:
+            self.signals.failed.emit(str(error))
 
 
 def format_bytes(value: int | float | None) -> str:
@@ -63,6 +81,8 @@ class MainWindow(QMainWindow):
         self.resize(1060, 760)
         self.setMinimumSize(780, 620)
         self._monitor = SystemMonitor()
+        self._sampling = False
+        self._sample_worker = None
         self._settings = QSettings("Okyanus11", "QuickStats")
         self._theme_name = str(self._settings.value("appearance/theme", "graphite"))
         self._accent_name = str(self._settings.value("appearance/accent", "blue"))
@@ -190,12 +210,26 @@ class MainWindow(QMainWindow):
             self._timer.setInterval(int(seconds) * 1000)
 
     def refresh_stats(self) -> None:
-        try:
-            snapshot = self._monitor.sample()
-        except Exception:
-            logger.exception("Could not collect system statistics")
+        # Never block Qt's event loop on OS metric providers. Skip a timer tick
+        # if the previous sample is still running rather than queueing stale work.
+        if self._sampling:
             return
+        self._sampling = True
+        worker = _SampleWorker(self._monitor)
+        self._sample_worker = worker
+        worker.signals.finished.connect(self._sample_finished)
+        worker.signals.failed.connect(self._sample_failed)
+        QThreadPool.globalInstance().start(worker)
+
+    def _sample_finished(self, snapshot: SystemSnapshot) -> None:
+        self._sampling = False
+        self._sample_worker = None
         self._update_dashboard(snapshot)
+
+    def _sample_failed(self, message: str) -> None:
+        self._sampling = False
+        self._sample_worker = None
+        logger.error("Could not collect system statistics: %s", message)
 
     def _update_dashboard(self, data: SystemSnapshot) -> None:
         self.cpu_card.set_metric(
