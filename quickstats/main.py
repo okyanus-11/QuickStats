@@ -6,7 +6,9 @@ import logging
 import sys
 
 from PySide6.QtCore import QObject, QRunnable, Qt, QSettings, QThreadPool, QTimer, Signal
+from PySide6.QtGui import QColor
 from PySide6.QtWidgets import (
+    QColorDialog,
     QApplication,
     QComboBox,
     QFrame,
@@ -137,6 +139,9 @@ class MainWindow(QMainWindow):
         self.accent_select.setCurrentIndex(max(0, self.accent_select.findData(self._accent_name)))
         self.accent_select.currentIndexChanged.connect(self._appearance_changed)
         header.addWidget(self.accent_select)
+        custom_accent_button = QPushButton("Custom…")
+        custom_accent_button.clicked.connect(self._choose_custom_accent)
+        header.addWidget(custom_accent_button)
         header.addSpacing(8)
         interval_label = QLabel("Refresh")
         interval_label.setProperty("class", "muted")
@@ -186,6 +191,18 @@ class MainWindow(QMainWindow):
         self._timer.timeout.connect(self.refresh_stats)
         self._timer.start(1000)
         self.refresh_stats()
+
+    def _choose_custom_accent(self) -> None:
+        current = theme.current_palette()["accent"]
+        color = QColorDialog.getColor(QColor(current), self, "Choose accent colour")
+        if not color.isValid():
+            return
+        self._accent_name = color.name()
+        self._settings.setValue("appearance/accent", self._accent_name)
+        app = QApplication.instance()
+        if app is not None:
+            app.setStyleSheet(theme.build_stylesheet(self._theme_name, self._accent_name))
+        self.update()
 
     def _appearance_changed(self, _index: int) -> None:
         self._theme_name = str(self.theme_select.currentData() or "graphite")
