@@ -49,4 +49,4 @@ The standalone application is written to `dist\QuickStats\QuickStats.exe`.
 
 ## Installation
 
-For prerequisites, environment setup, configuration, and run/build commands, see the [installation guide](INSTALLATION.md).
+Requires Windows 10/11 and Python 3.11+. Create a virtual environment, install `requirements.txt`, and launch with `python -m quickstats`. For tests, install `requirements-dev.txt` and run `python -m pytest`; the standalone Windows build uses `quickstats.spec`. See the [full installation guide](INSTALLATION.md).
