@@ -6,6 +6,8 @@ than hard-coded hex values, so theme changes stay consistent across the app.
 
 from __future__ import annotations
 
+import re
+
 THEMES: dict[str, dict[str, str]] = {
     "graphite": {
         "background": "#101318",
@@ -56,14 +58,19 @@ def configure(theme_name: str = "graphite", accent_name: str = "blue") -> None:
     """Set the active semantic palette, falling back safely for unknown values."""
     global _ACTIVE_THEME, _ACTIVE_ACCENT
     _ACTIVE_THEME = theme_name if theme_name in THEMES else "graphite"
-    _ACTIVE_ACCENT = accent_name if accent_name in ACCENTS else "blue"
+    if accent_name in ACCENTS:
+        _ACTIVE_ACCENT = accent_name
+    elif re.fullmatch(r"#[0-9a-fA-F]{6}", accent_name):
+        _ACTIVE_ACCENT = accent_name.lower()
+    else:
+        _ACTIVE_ACCENT = "blue"
 
 
 def current_palette() -> dict[str, str]:
     """Return a fresh palette with the selected accent merged in."""
     palette = dict(THEMES[_ACTIVE_THEME])
-    palette["accent"] = ACCENTS[_ACTIVE_ACCENT]
-    palette["accent_soft"] = ACCENTS[_ACTIVE_ACCENT] + "33"
+    palette["accent"] = ACCENTS.get(_ACTIVE_ACCENT, _ACTIVE_ACCENT)
+    palette["accent_soft"] = palette["accent"] + "33"
     palette["memory"] = "#b59cff" if _ACTIVE_THEME != "light" else "#7654c5"
     palette["storage"] = "#45c6b0" if _ACTIVE_THEME != "light" else "#168a83"
     return palette
