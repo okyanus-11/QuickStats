@@ -13,7 +13,7 @@ that the system does not provide are shown as unavailable rather than guessed.
   intervals (1, 2, 5, or 10 seconds).
 - Hardware details for processor, memory, mounted storage, Windows version,
   and display adapters when Windows reports them.
-- Graphite, Midnight and Light themes with six selectable accent colours.
+- Graphite, Midnight and Light themes with six accent presets or any custom hex colour.
 - Theme and accent preferences persist between launches.
 - Metric collection and hardware inventory run in background workers so slow
   OS queries do not freeze the interface.
