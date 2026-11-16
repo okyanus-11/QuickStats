@@ -21,3 +21,11 @@ def test_stylesheet_uses_selected_theme_and_accent() -> None:
     stylesheet = theme.build_stylesheet("light", "rose")
     assert theme.THEMES["light"]["background"] in stylesheet
     assert theme.ACCENTS["rose"] in stylesheet
+
+
+
+def test_custom_hex_accent_is_supported_and_invalid_values_fall_back() -> None:
+    stylesheet = theme.build_stylesheet("graphite", "#12abef")
+    assert "#12abef" in stylesheet
+    theme.configure("graphite", "not-a-colour")
+    assert theme.current_palette()["accent"] == theme.ACCENTS["blue"]
