@@ -87,21 +87,22 @@ class HistoryChart(QWidget):
         if rect.width() <= 0 or rect.height() <= 0:
             return
 
-        grid_pen = QPen(QColor(theme.SURFACE_ALT), 1)
+        palette = theme.current_palette()
+        grid_pen = QPen(QColor(palette["grid"]), 1)
         painter.setPen(grid_pen)
         for value in (0, 25, 50, 75, 100):
             y = rect.bottom() - rect.height() * value / 100
             painter.drawLine(QPointF(rect.left(), y), QPointF(rect.right(), y))
-            painter.setPen(QColor(theme.MUTED))
+            painter.setPen(QColor(palette["muted"]))
             painter.drawText(0, round(y - 8), 34, 16, Qt.AlignmentFlag.AlignRight, f"{value}%")
             painter.setPen(grid_pen)
 
-        self._draw_series(painter, rect, 0, theme.BLUE)
-        self._draw_series(painter, rect, 1, theme.MAUVE)
+        self._draw_series(painter, rect, 0, palette["accent"])
+        self._draw_series(painter, rect, 1, palette["memory"])
 
-        painter.setPen(QColor(theme.BLUE))
+        painter.setPen(QColor(palette["accent"]))
         painter.drawText(round(rect.left()), self.height() - 6, "CPU")
-        painter.setPen(QColor(theme.MAUVE))
+        painter.setPen(QColor(palette["memory"]))
         painter.drawText(round(rect.left() + 54), self.height() - 6, "Memory")
         painter.end()
 
