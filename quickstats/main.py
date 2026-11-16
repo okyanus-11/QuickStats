@@ -136,6 +136,8 @@ class MainWindow(QMainWindow):
             ("emerald", "Emerald"), ("amber", "Amber"), ("rose", "Rose"),
         ):
             self.accent_select.addItem(label, key)
+        if self._accent_name.startswith("#"):
+            self.accent_select.addItem(f"Custom ({self._accent_name})", self._accent_name)
         self.accent_select.setCurrentIndex(max(0, self.accent_select.findData(self._accent_name)))
         self.accent_select.currentIndexChanged.connect(self._appearance_changed)
         header.addWidget(self.accent_select)
@@ -198,6 +200,11 @@ class MainWindow(QMainWindow):
         if not color.isValid():
             return
         self._accent_name = color.name()
+        index = self.accent_select.findData(self._accent_name)
+        if index < 0:
+            self.accent_select.addItem(f"Custom ({self._accent_name})", self._accent_name)
+            index = self.accent_select.count() - 1
+        self.accent_select.setCurrentIndex(index)
         self._settings.setValue("appearance/accent", self._accent_name)
         app = QApplication.instance()
         if app is not None:
