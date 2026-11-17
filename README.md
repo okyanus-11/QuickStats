@@ -5,6 +5,15 @@ statistics. It reads CPU, memory, storage, network, and boot-time data from
 `psutil`; hardware details are gathered from the operating system. Readings
 that the system does not provide are shown as unavailable rather than guessed.
 
+
+<p align="center">
+  <a href="https://github.com/okyanus-11/QuickStats/releases/download/v1.0.0/QuickStats-Setup-1.0.0.exe"><strong>⬇️ Download for Windows — Installer (.exe)</strong></a>
+  · <a href="https://github.com/okyanus-11/QuickStats/releases/latest">All releases</a>
+</p>
+
+> **Windows 10/11:** Click the installer above to install the app. No Python setup or ZIP extraction required.
+
+
 ## Features
 
 - Live CPU and memory utilization, system-drive usage, and network transfer
