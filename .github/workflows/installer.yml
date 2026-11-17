@@ -109,7 +109,7 @@ jobs:
         run: |
           New-Item -ItemType Directory -Force -Path ".\release" | Out-Null
           $version = python -c "from quickstats import __version__; print(__version__)"
-          Copy-Item ".\dist\QuickStats\QuickStats.exe" ".\release\QuickStats.exe"
+          Compress-Archive -Path ".\dist\QuickStats\*" -DestinationPath ".\release\QuickStats-portable-windows-x64.zip" -Force
           Copy-Item ".\dist\installer\QuickStats-Setup-$version.exe" ".\release\"
           Get-ChildItem ".\release" -File | ForEach-Object {
             $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
@@ -142,5 +142,5 @@ jobs:
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --title "QuickStats $TAG" --generate-notes
-          gh release upload "$TAG" artifacts/QuickStats-Setup-*.exe artifacts/QuickStats.exe artifacts/SHA256SUMS.txt \
+          gh release upload "$TAG" artifacts/QuickStats-Setup-*.exe artifacts/QuickStats-portable-windows-x64.zip artifacts/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --clobber
