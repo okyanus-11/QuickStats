@@ -39,6 +39,10 @@ python -m pip install -r requirements-dev.txt
 python -m pytest
 ```
 
+## Install on Windows
+
+Download [QuickStats-Setup-1.0.0.exe from the latest release](https://github.com/okyanus-11/QuickStats/releases/latest) and run the setup wizard. It installs the complete application without requiring Python, adds a Start Menu shortcut, offers an optional desktop shortcut, and registers a Windows uninstaller. See [INSTALLATION.md](INSTALLATION.md) for details.
+
 ## Build a Windows executable
 
 ```powershell
