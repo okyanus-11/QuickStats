@@ -17,6 +17,12 @@ pip install -r requirements.txt
 python -m quickstats
 ```
 
+## Windows installer
+
+Download `QuickStats-Setup-1.0.0.exe` from the [latest GitHub release](https://github.com/okyanus-11/QuickStats/releases/latest). Run it and follow the setup wizard. It installs per-user under `%LOCALAPPDATA%\\Programs\\QuickStats`, creates a Start Menu shortcut, and offers an optional desktop shortcut. Administrator privileges and a separate Python installation are not required. The installer includes the complete PyInstaller application folder and registers a standard Windows uninstaller.
+
+The installer is built and smoke-tested on Windows by GitHub Actions. Main-branch builds are available as 30-day workflow artifacts; version-tagged builds are attached to GitHub Releases. Installers are currently unsigned, so Windows SmartScreen may show an unfamiliar-app warning.
+
 ## Tests and executable build
 
 ```powershell
