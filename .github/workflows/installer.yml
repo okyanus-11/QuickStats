@@ -1,0 +1,139 @@
+name: Tests and Windows installer
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*"]
+  pull_request:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Optional release tag to publish (for example v1.0.0)"
+        required: false
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  tests:
+    name: Tests ($${{ matrix.os }})
+    runs-on: $${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [windows-latest, ubuntu-latest]
+    env:
+      QT_QPA_PLATFORM: $${{ matrix.os == 'ubuntu-latest' && 'offscreen' || 'windows' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install Linux Qt libraries
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libegl1 libgl1 libxkbcommon0 libfontconfig1 libfreetype6
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Run tests
+        run: python -m pytest -q
+
+  windows-installer:
+    name: Build and verify Windows installer
+    runs-on: windows-latest
+    needs: tests
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+      - name: Install build dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements-dev.txt
+      - name: Run tests and build application
+        shell: pwsh
+        run: |
+          python -m pytest -q
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          python -m PyInstaller --clean --noconfirm quickstats.spec
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          if (-not (Test-Path -LiteralPath ".\dist\QuickStats\QuickStats.exe")) {
+            throw "PyInstaller did not produce dist\QuickStats\QuickStats.exe"
+          }
+      - name: Install Inno Setup
+        run: choco install innosetup --yes --no-progress
+      - name: Build installer
+        shell: pwsh
+        run: |
+          $version = python -c "from quickstats import __version__; print(__version__)"
+          $compiler = Join-Path ${env:ProgramFiles(x86)} "Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path -LiteralPath $compiler)) { throw "Inno Setup compiler not found: $compiler" }
+          & $compiler "/DMyAppVersion=$version" ".\installer\quickstats.iss"
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          $installer = ".\dist\installer\QuickStats-Setup-$version.exe"
+          if (-not (Test-Path -LiteralPath $installer)) { throw "Installer was not created: $installer" }
+      - name: Verify install and uninstall
+        shell: pwsh
+        run: |
+          $version = python -c "from quickstats import __version__; print(__version__)"
+          $installer = (Resolve-Path ".\dist\installer\QuickStats-Setup-$version.exe").Path
+          $installDir = Join-Path $env:RUNNER_TEMP "QuickStats-install-smoke"
+          & $installer /VERYSILENT /SUPPRESSMSGBOXES /NORESTART "/DIR=$installDir"
+          if ($LASTEXITCODE -ne 0) { throw "QuickStats installer exited with code $LASTEXITCODE" }
+          if (-not (Test-Path -LiteralPath (Join-Path $installDir "QuickStats.exe"))) {
+            throw "Installed QuickStats.exe is missing"
+          }
+          $uninstaller = Join-Path $installDir "unins000.exe"
+          if (-not (Test-Path -LiteralPath $uninstaller)) { throw "QuickStats uninstaller is missing" }
+          & $uninstaller /VERYSILENT /SUPPRESSMSGBOXES /NORESTART
+          if ($LASTEXITCODE -ne 0) { throw "QuickStats uninstaller exited with code $LASTEXITCODE" }
+          if (Test-Path -LiteralPath (Join-Path $installDir "QuickStats.exe")) {
+            throw "QuickStats files remain after uninstall"
+          }
+      - name: Stage installer and checksums
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force -Path ".\release" | Out-Null
+          $version = python -c "from quickstats import __version__; print(__version__)"
+          Copy-Item ".\dist\QuickStats\QuickStats.exe" ".\release\QuickStats.exe"
+          Copy-Item ".\dist\installer\QuickStats-Setup-$version.exe" ".\release\"
+          Get-ChildItem ".\release" -File | ForEach-Object {
+            $hash = (Get-FileHash -Algorithm SHA256 -LiteralPath $_.FullName).Hash
+            "$hash  $($_.Name)"
+          } | Set-Content -LiteralPath ".\release\SHA256SUMS.txt" -Encoding ascii
+      - uses: actions/upload-artifact@v4
+        with:
+          name: QuickStats-Windows-$${{ github.sha }}
+          path: release/*
+          if-no-files-found: error
+          retention-days: 30
+
+  release:
+    name: Publish GitHub release
+    needs: windows-installer
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: QuickStats-Windows-$${{ github.sha }}
+          path: artifacts
+      - name: Publish installer
+        env:
+          GH_TOKEN: $${{ github.token }}
+          TAG: $${{ inputs.release_tag || github.ref_name }}
+        run: |
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
+            gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
+              --title "QuickStats $TAG" --generate-notes
+          gh release upload "$TAG" artifacts/QuickStats-Setup-*.exe artifacts/QuickStats.exe artifacts/SHA256SUMS.txt \
+            --repo "$GITHUB_REPOSITORY" --clobber
