@@ -102,7 +102,7 @@ jobs:
           $uninstallProcess = Start-Process -FilePath $uninstaller -ArgumentList @("/VERYSILENT", "/SUPPRESSMSGBOXES", "/NORESTART") -Wait -PassThru
           if ($uninstallProcess.ExitCode -ne 0) { throw "QuickStats uninstaller exited with code $($uninstallProcess.ExitCode)" }
           $deadline = (Get-Date).AddSeconds(15)
-          while (Test-Path -LiteralPath (Join-Path $installDir "QuickStats.exe") -and (Get-Date) -lt $deadline) { Start-Sleep -Milliseconds 250 }
+          while ((Test-Path -LiteralPath (Join-Path $installDir "QuickStats.exe")) -and ((Get-Date) -lt $deadline)) { Start-Sleep -Milliseconds 250 }
           if (Test-Path -LiteralPath (Join-Path $installDir "QuickStats.exe")) {
             throw "QuickStats files remain after uninstall"
           }
