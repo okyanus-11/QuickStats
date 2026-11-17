@@ -127,7 +127,7 @@ jobs:
   release:
     name: Publish GitHub release
     needs: windows-installer
-    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '')
+    if: startsWith(github.ref, 'refs/tags/v') || (github.event_name == 'workflow_dispatch' && inputs.release_tag != '') || (github.event_name == 'push' && github.ref == 'refs/heads/main')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -139,10 +139,10 @@ jobs:
       - name: Publish installer
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ inputs.release_tag || github.ref_name }}
+          TAG: ${{ inputs.release_tag || (startsWith(github.ref, 'refs/tags/') && github.ref_name) || 'v1.0.0' }}
         run: |
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1 || \
             gh release create "$TAG" --repo "$GITHUB_REPOSITORY" --target "$GITHUB_SHA" \
               --title "QuickStats $TAG" --generate-notes
-          gh release upload "$TAG" artifacts/QuickStats-Setup-*.exe artifacts/QuickStats-portable-windows-x64.zip artifacts/SHA256SUMS.txt \
+          gh release upload "$TAG" artifacts/QuickStats-Setup-*.exe artifacts/SHA256SUMS.txt \
             --repo "$GITHUB_REPOSITORY" --clobber
